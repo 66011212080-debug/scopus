@@ -1,0 +1,37 @@
+import pandas as pd
+import json
+
+filename = "scopus_export_Aug 13-2026_8bfb69db-ba51-45fd-8ab2-6a80c23fed20_2.csv"
+try:
+    df = pd.read_csv(filename)
+    
+    # Clean 'Cited by' column (fill NaN with 0)
+    df['Cited by'] = df['Cited by'].fillna(0).astype(int)
+    
+    total_citations = int(df['Cited by'].sum())
+    total_pubs = len(df)
+    
+    # Citations by year
+    yearly_data = df.groupby('Year')['Cited by'].sum().reset_index()
+    pubs_yearly = df.groupby('Year').size().reset_index(name='Publications')
+    yearly_merged = pd.merge(yearly_data, pubs_yearly, on='Year', how='outer').fillna(0)
+    yearly_merged = yearly_merged.sort_values('Year')
+    
+    years = yearly_merged['Year'].astype(int).tolist()
+    citations_per_year = yearly_merged['Cited by'].astype(int).tolist()
+    pubs_per_year = yearly_merged['Publications'].astype(int).tolist()
+    
+    # Top 5 cited papers
+    top_papers = df.nlargest(5, 'Cited by')[['Title', 'Year', 'Source title', 'Cited by']].fillna('')
+    top_papers_list = top_papers.to_dict(orient='records')
+
+    print(json.dumps({
+        "total_citations": total_citations,
+        "total_pubs": total_pubs,
+        "years": years,
+        "citations_per_year": citations_per_year,
+        "pubs_per_year": pubs_per_year,
+        "top_papers": top_papers_list
+    }, indent=2))
+except Exception as e:
+    print("Error:", e)
